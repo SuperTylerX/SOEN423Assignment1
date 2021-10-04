@@ -4,10 +4,12 @@ import business.RoomManager;
 import common.BookingRecord;
 import common.Setting;
 import common.StudentService;
+import server.utils.Log;
 import server.utils.Utils;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.Date;
 
 public class StudentServiceImpl extends UnicastRemoteObject implements StudentService {
 
@@ -27,6 +29,10 @@ public class StudentServiceImpl extends UnicastRemoteObject implements StudentSe
         } else {
             result = roomManager.bookRoomRemote(roomNumber, date, timeSlot, studentID, campusName);
         }
+        Log.addLog(campusCode, "Date: " + new Date().toLocaleString());
+        Log.addLog(campusCode, "\r\nRequest Type: Book Room");
+        Log.addLog(campusCode, "\r\nParameter: " + roomNumber + ", " + date + ", " + timeSlot + ", " + studentID);
+        Log.addLog(campusCode, "\r\n" + result + "\r\n\r\n");
         return result;
     }
 
@@ -67,6 +73,10 @@ public class StudentServiceImpl extends UnicastRemoteObject implements StudentSe
         } else {
             result = roomManager.cancelBookingRemote(bookingID, studentID, bookingRecord.campusName);
         }
+        Log.addLog(campusCode, "Date: " + new Date().toLocaleString());
+        Log.addLog(campusCode, "\r\nRequest Type: Book Room");
+        Log.addLog(campusCode, "\r\nParameter: " + studentID + ", " + studentID);
+        Log.addLog(campusCode, "\r\n" + result + "\r\n\r\n");
         return result;
     }
 }

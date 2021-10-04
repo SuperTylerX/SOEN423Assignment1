@@ -46,11 +46,11 @@ public class RoomManager {
 
     }
 
-    public synchronized void deleteRoom(String roomNumber, String date, String timeSlot) {
+    public synchronized String deleteRoom(String roomNumber, String date, String timeSlot) {
 
         try {
             if (!roomRecords.get(date).get(roomNumber).containsKey(timeSlot)) {
-                System.out.println("No such record found!");
+                return "No such record found!";
             }
             if (roomRecords.get(date).get(roomNumber).get(timeSlot) != null) {
                 // Someone reserved this room
@@ -62,9 +62,11 @@ public class RoomManager {
 
             }
             roomRecords.get(date).get(roomNumber).remove(timeSlot);
+            return "Success!";
         } catch (NullPointerException e) {
-            System.out.println("No such record found!");
+            return "No such record found!";
         }
+
     }
 
     public synchronized String bookRoomLocal(String roomNumber, String date, String timeSlot, String studentID, String campusName) {
@@ -200,7 +202,7 @@ public class RoomManager {
         return count.get();
     }
 
-    public String cancelBookingLocal(String bookingID, String studentID) {
+    public synchronized String cancelBookingLocal(String bookingID, String studentID) {
 
         for (BookingRecord record : bookingTable) {
             if (record.bookingID.equals(bookingID)) {
@@ -220,7 +222,7 @@ public class RoomManager {
 
     }
 
-    public String cancelBookingRemote(String bookingID, String studentID, String campusName) {
+    public synchronized String cancelBookingRemote(String bookingID, String studentID, String campusName) {
 
         for (BookingRecord record : bookingTable) {
             if (record.bookingID.equals(bookingID)) {
@@ -263,7 +265,7 @@ public class RoomManager {
         return "Failed! No such record found!";
     }
 
-    public String removeRoomRecord(String date, String roomNumber, String timeSlot, String studentID) {
+    public synchronized String removeRoomRecord(String date, String roomNumber, String timeSlot, String studentID) {
         try {
             if (!roomRecords.get(date).get(roomNumber).containsKey(timeSlot)) {
                 return "Failed! No such timeslot found!";
@@ -280,7 +282,7 @@ public class RoomManager {
         }
     }
 
-    public String removeBookingTable(String bookingID, String studentID) {
+    public synchronized String removeBookingTable(String bookingID, String studentID) {
 
         for (int i = 0; i < bookingTable.size(); i++) {
             BookingRecord record = bookingTable.get(i);

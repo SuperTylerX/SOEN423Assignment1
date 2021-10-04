@@ -14,7 +14,7 @@ public class Server {
 
         String registryURL = "rmi://localhost:" + portNum;
         StudentService studentService = new StudentServiceImpl(campusCode);
-        AdminService adminService = new AdminServiceImpl();
+        AdminService adminService = new AdminServiceImpl(campusCode);
         LocateRegistry.createRegistry(portNum);
         Naming.rebind(registryURL + "/StudentService", studentService);
         Naming.rebind(registryURL + "/AdminService", adminService);

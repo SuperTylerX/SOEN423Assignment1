@@ -53,6 +53,8 @@ public class StudentClient {
                         System.out.println("Please enter the timeslot(HH:mm-HH:mm):");
                         String timeslot = br.readLine();
                         String result = studentService.bookRoom(campus, roomNumber, date, timeslot, studentID);
+                        Log.addLog(studentID, "[Request] Book a room, " + campus + ", " + roomNumber + ", " + date + ", " + timeslot + "\r\n");
+                        Log.addLog(studentID, "[Response] " + result + "\r\n\r\n");
                         System.out.println(result);
                         break;
                     }
@@ -67,6 +69,8 @@ public class StudentClient {
                         System.out.println("Please enter the booking ID:");
                         String bookingID = br.readLine();
                         String result = studentService.cancelBooking(bookingID, studentID);
+                        Log.addLog(studentID, "[Request] Cancel a booking, " + bookingID + "\r\n");
+                        Log.addLog(studentID, "[Response] " + result + "\r\n\r\n");
                         System.out.println(result);
                         break;
                     }

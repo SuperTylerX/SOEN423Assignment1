@@ -1,4 +1,4 @@
-package server.utils;
+package client;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -7,10 +7,10 @@ import java.io.IOException;
 
 public class Log {
 
-    public static void addLog(String campusCode, String content) {
+    public static void addLog(String userID, String content) {
         try {
 
-            File file = new File("ServerLog/" + campusCode + ".txt");
+            File file = new File("UserLog/" + userID + ".txt");
 
             // if file doesn't exist, create it
             if (!file.exists()) {
@@ -26,4 +26,6 @@ public class Log {
             e.printStackTrace();
         }
     }
+
+
 }
