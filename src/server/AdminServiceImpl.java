@@ -1,6 +1,6 @@
 package server;
 
-import business.RoomManager;
+import server.business.RoomManager;
 import common.AdminService;
 import server.utils.Log;
 

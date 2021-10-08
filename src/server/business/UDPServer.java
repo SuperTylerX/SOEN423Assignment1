@@ -1,6 +1,5 @@
-package server;
+package server.business;
 
-import business.RoomManager;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -12,7 +11,6 @@ import java.nio.charset.StandardCharsets;
 
 public class UDPServer {
     public UDPServer(int PORT) {
-        System.out.println(PORT);
         DatagramSocket aSocket = null;
         try {
             aSocket = new DatagramSocket(PORT);

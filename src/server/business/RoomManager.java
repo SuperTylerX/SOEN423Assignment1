@@ -1,10 +1,9 @@
-package business;
+package server.business;
 
 import common.BookingRecord;
 import common.Setting;
 import server.utils.Utils;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -15,9 +14,9 @@ public class RoomManager {
 
     // Room Record data structure is a hashmap which looks like
     // ( Date => ( RoomNumber => ( TimeSlot => BookedBy )) )
-    public final HashMap<String, HashMap<String, HashMap<String, String>>> roomRecords = new HashMap<>();
+    private final HashMap<String, HashMap<String, HashMap<String, String>>> roomRecords = new HashMap<>();
 
-    public ArrayList<BookingRecord> bookingTable = new ArrayList<>();
+    private final ArrayList<BookingRecord> bookingTable = new ArrayList<>();
 
     private static RoomManager roomManager;
 
@@ -158,10 +157,6 @@ public class RoomManager {
     private synchronized boolean isExceedReservationLimit(String studentID) {
         int count = 0;
         for (BookingRecord bookingRecord : bookingTable) {
-
-            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-            System.out.println(count);
-
             if (bookingRecord.studentID.equals(studentID)
                     &&
                     isThisWeek(bookingRecord.orderDate)) {
