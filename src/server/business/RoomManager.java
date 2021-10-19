@@ -30,45 +30,50 @@ public class RoomManager {
         return roomManager;
     }
 
-    public synchronized void createRoom(String roomNumber, String date, String timeSlot) {
+    public void createRoom(String roomNumber, String date, String timeSlot) {
 
-        // if the room existed, create a new hash map
-        if (roomRecords.get(date) == null) {
-            HashMap<String, HashMap<String, String>> newRoom = new HashMap<>();
-            roomRecords.put(date, newRoom);
+        synchronized (roomRecords) {
+            // if the room existed, create a new hash map
+            if (roomRecords.get(date) == null) {
+                HashMap<String, HashMap<String, String>> newRoom = new HashMap<>();
+                roomRecords.put(date, newRoom);
+            }
+            if (roomRecords.get(date).get(roomNumber) == null) {
+                HashMap<String, String> newTimeSlot = new HashMap<>();
+                roomRecords.get(date).put(roomNumber, newTimeSlot);
+            }
+            roomRecords.get(date).get(roomNumber).put(timeSlot, null);
         }
-        if (roomRecords.get(date).get(roomNumber) == null) {
-            HashMap<String, String> newTimeSlot = new HashMap<>();
-            roomRecords.get(date).put(roomNumber, newTimeSlot);
-        }
-        roomRecords.get(date).get(roomNumber).put(timeSlot, null);
 
     }
 
-    public synchronized String deleteRoom(String roomNumber, String date, String timeSlot) {
+    public String deleteRoom(String roomNumber, String date, String timeSlot) {
 
-        try {
-            if (!roomRecords.get(date).get(roomNumber).containsKey(timeSlot)) {
+        synchronized (roomRecords) {
+            try {
+                if (!roomRecords.get(date).get(roomNumber).containsKey(timeSlot)) {
+                    return "No such record found!";
+                }
+                if (roomRecords.get(date).get(roomNumber).get(timeSlot) != null) {
+                    // Someone reserved this room
+                    String userId = roomRecords.get(date).get(roomNumber).get(timeSlot);
+                    // delete it from the recordTable
+                    synchronized (bookingTable) {
+                        bookingTable.removeIf(bookingRecord -> bookingRecord.bookingDate.equals(date)
+                                && bookingRecord.roomNumber.equals(roomNumber)
+                                && bookingRecord.timeSlot.equals(timeSlot));
+                    }
+                }
+                roomRecords.get(date).get(roomNumber).remove(timeSlot);
+                return "Success!";
+            } catch (NullPointerException e) {
                 return "No such record found!";
             }
-            if (roomRecords.get(date).get(roomNumber).get(timeSlot) != null) {
-                // Someone reserved this room
-                String userId = roomRecords.get(date).get(roomNumber).get(timeSlot);
-                // delete it from the recordTable
-                bookingTable.removeIf(bookingRecord -> bookingRecord.bookingDate.equals(date)
-                        && bookingRecord.roomNumber.equals(roomNumber)
-                        && bookingRecord.timeSlot.equals(timeSlot));
-
-            }
-            roomRecords.get(date).get(roomNumber).remove(timeSlot);
-            return "Success!";
-        } catch (NullPointerException e) {
-            return "No such record found!";
         }
 
     }
 
-    public synchronized String bookRoomLocal(String roomNumber, String date, String timeSlot, String studentID, String campusName) {
+    public String bookRoomLocal(String roomNumber, String date, String timeSlot, String studentID, String campusName) {
 
         // Check if the student can book
         if (isExceedReservationLimit(studentID)) {
@@ -88,7 +93,8 @@ public class RoomManager {
 
     }
 
-    public synchronized String bookRoomRemote(String roomNumber, String date, String timeSlot, String studentID, String campusName) {
+    public String bookRoomRemote(String roomNumber, String date, String timeSlot, String studentID, String campusName) {
+
         String TargetHost = "";
         int TargetPort = 0;
         switch (campusName) {
@@ -131,46 +137,54 @@ public class RoomManager {
 
     }
 
-    private synchronized String addBookingTable(String studentID, String date, String roomNumber, String timeSlot, String campusName) {
-        BookingRecord newBookingRecord = new BookingRecord(studentID, date, roomNumber, timeSlot, campusName);
-        bookingTable.add(newBookingRecord);
-        return "Success! Your Booking ID is " + newBookingRecord.bookingID;
+    private String addBookingTable(String studentID, String date, String roomNumber, String timeSlot, String campusName) {
+        synchronized (bookingTable) {
+            BookingRecord newBookingRecord = new BookingRecord(studentID, date, roomNumber, timeSlot, campusName);
+            bookingTable.add(newBookingRecord);
+            return "Success! Your Booking ID is " + newBookingRecord.bookingID;
+        }
     }
 
-    public synchronized String addRoomRecord(String date, String roomNumber, String timeSlot, String studentID) {
-        try {
-            if (!roomRecords.get(date).get(roomNumber).containsKey(timeSlot)) {
+    public String addRoomRecord(String date, String roomNumber, String timeSlot, String studentID) {
+        synchronized (roomRecords) {
+            try {
+                if (!roomRecords.get(date).get(roomNumber).containsKey(timeSlot)) {
+                    return "Failed! No such timeslot found!";
+                }
+                if (roomRecords.get(date).get(roomNumber).get(timeSlot) == null) {
+                    roomRecords.get(date).get(roomNumber).put(timeSlot, studentID);
+                } else {
+                    // This slot is reserved by someone else
+                    return "Failed! This timeslot is reserved by someone else.";
+                }
+            } catch (NullPointerException e) {
                 return "Failed! No such timeslot found!";
             }
-            if (roomRecords.get(date).get(roomNumber).get(timeSlot) == null) {
-                roomRecords.get(date).get(roomNumber).put(timeSlot, studentID);
-            } else {
-                // This slot is reserved by someone else
-                return "Failed! This timeslot is reserved by someone else.";
-            }
-        } catch (NullPointerException e) {
-            return "Failed! No such timeslot found!";
+            return "Success!";
         }
-        return "Success!";
+
     }
 
-    private synchronized boolean isExceedReservationLimit(String studentID) {
-        int count = 0;
-        for (BookingRecord bookingRecord : bookingTable) {
-            if (bookingRecord.studentID.equals(studentID)
-                    &&
-                    isThisWeek(bookingRecord.orderDate)) {
-                count++;
-                if (count >= 3) {
-                    return true;
+    private boolean isExceedReservationLimit(String studentID) {
+        synchronized (bookingTable) {
+            int count = 0;
+            for (BookingRecord bookingRecord : bookingTable) {
+                if (bookingRecord.studentID.equals(studentID)
+                        &&
+                        isThisWeek(bookingRecord.orderDate)) {
+                    count++;
+                    if (count >= 3) {
+                        return true;
+                    }
                 }
-            }
 
+            }
+            return false;
         }
-        return false;
+
     }
 
-    public synchronized static boolean isThisWeek(long time) {
+    public static boolean isThisWeek(long time) {
         Calendar calendar = Calendar.getInstance();
         int currentWeek = calendar.get(Calendar.WEEK_OF_YEAR);
         calendar.setTime(new Date(time));
@@ -179,126 +193,138 @@ public class RoomManager {
     }
 
     public int getAvailableTimeSlot(String date) {
-        AtomicInteger count = new AtomicInteger();
-        HashMap<String, HashMap<String, String>> thatDateRecords = roomRecords.get(date);
-        if (thatDateRecords == null) {
+        synchronized (roomRecords) {
+            AtomicInteger count = new AtomicInteger();
+            HashMap<String, HashMap<String, String>> thatDateRecords = roomRecords.get(date);
+            if (thatDateRecords == null) {
+                return count.get();
+            }
+            thatDateRecords.forEach((roomRecords, timeSlotRecords) -> {
+                if (timeSlotRecords != null) {
+                    timeSlotRecords.forEach((timeSlot, reservedBy) -> {
+                        if (reservedBy == null) {
+                            count.getAndIncrement();
+                        }
+                    });
+                }
+            });
+
             return count.get();
         }
-        thatDateRecords.forEach((roomRecords, timeSlotRecords) -> {
-            if (timeSlotRecords != null) {
-                timeSlotRecords.forEach((timeSlot, reservedBy) -> {
-                    if (reservedBy == null) {
-                        count.getAndIncrement();
-                    }
-                });
-            }
-        });
-
-        return count.get();
     }
 
-    public synchronized String cancelBookingLocal(String bookingID, String studentID) {
-
-        for (BookingRecord record : bookingTable) {
-            if (record.bookingID.equals(bookingID)) {
-                if (!record.studentID.equals(studentID)) {
-                    return "Failed! You do not have permission to modify this booking!";
+    public String cancelBookingLocal(String bookingID, String studentID) {
+        synchronized (bookingTable) {
+            for (BookingRecord record : bookingTable) {
+                if (record.bookingID.equals(bookingID)) {
+                    if (!record.studentID.equals(studentID)) {
+                        return "Failed! You do not have permission to modify this booking!";
+                    }
+                    String result = removeRoomRecord(record.bookingDate, record.roomNumber, record.timeSlot, studentID);
+                    if (!result.startsWith("Success")) {
+                        return result;
+                    } else {
+                        break;
+                    }
                 }
-                String result = removeRoomRecord(record.bookingDate, record.roomNumber, record.timeSlot, studentID);
-                if (!result.startsWith("Success")) {
+            }
+            return removeBookingTable(bookingID, studentID);
+        }
+
+
+    }
+
+    public String cancelBookingRemote(String bookingID, String studentID, String campusName) {
+        synchronized (bookingTable) {
+            for (BookingRecord record : bookingTable) {
+                if (record.bookingID.equals(bookingID)) {
+                    if (!record.studentID.equals(studentID)) {
+                        return "Failed! You do not have permission to modify this booking!";
+                    }
+                    String result = removeBookingTable(bookingID, studentID);
+                    if (result.startsWith("Success")) {
+                        String TargetHost = "";
+                        int TargetPort = 0;
+                        switch (campusName) {
+                            case "DVL":
+                                TargetHost = Setting.DVL_HOSTNAME;
+                                TargetPort = Setting.DVL_UDP_SERVER_PORT;
+                                break;
+                            case "KKL":
+                                TargetHost = Setting.KKL_HOSTNAME;
+                                TargetPort = Setting.KKL_UDP_SERVER_PORT;
+                                break;
+                            case "WST":
+                                TargetHost = Setting.WST_HOSTNAME;
+                                TargetPort = Setting.WST_UDP_SERVER_PORT;
+                                break;
+                        }
+
+                        // Call Remote Server to add modify the record
+                        result = Utils.sendUDP("removeBookingRemote\r\n"
+                                        .concat(record.roomNumber).concat("\r\n")
+                                        .concat(record.bookingDate).concat("\r\n")
+                                        .concat(record.timeSlot).concat("\r\n")
+                                        .concat(studentID).concat("\r\n"),
+                                TargetHost, TargetPort
+                        );
+
+                    }
                     return result;
+                }
+            }
+
+            return "Failed! No such record found!";
+        }
+
+    }
+
+    public String removeRoomRecord(String date, String roomNumber, String timeSlot, String studentID) {
+        synchronized (roomRecords) {
+            try {
+                if (!roomRecords.get(date).get(roomNumber).containsKey(timeSlot)) {
+                    return "Failed! No such timeslot found!";
+                }
+                if (roomRecords.get(date).get(roomNumber).get(timeSlot).equals(studentID)) {
+                    roomRecords.get(date).get(roomNumber).put(timeSlot, null);
+                    return "Success!";
                 } else {
-                    break;
+                    // This slot is reserved by someone else
+                    return "Failed! You do not have permission.";
                 }
-            }
-        }
-
-        return removeBookingTable(bookingID, studentID);
-
-    }
-
-    public synchronized String cancelBookingRemote(String bookingID, String studentID, String campusName) {
-
-        for (BookingRecord record : bookingTable) {
-            if (record.bookingID.equals(bookingID)) {
-                if (!record.studentID.equals(studentID)) {
-                    return "Failed! You do not have permission to modify this booking!";
-                }
-                String result = removeBookingTable(bookingID, studentID);
-                if (result.startsWith("Success")) {
-                    String TargetHost = "";
-                    int TargetPort = 0;
-                    switch (campusName) {
-                        case "DVL":
-                            TargetHost = Setting.DVL_HOSTNAME;
-                            TargetPort = Setting.DVL_UDP_SERVER_PORT;
-                            break;
-                        case "KKL":
-                            TargetHost = Setting.KKL_HOSTNAME;
-                            TargetPort = Setting.KKL_UDP_SERVER_PORT;
-                            break;
-                        case "WST":
-                            TargetHost = Setting.WST_HOSTNAME;
-                            TargetPort = Setting.WST_UDP_SERVER_PORT;
-                            break;
-                    }
-
-                    // Call Remote Server to add modify the record
-                    result = Utils.sendUDP("removeBookingRemote\r\n"
-                                    .concat(record.roomNumber).concat("\r\n")
-                                    .concat(record.bookingDate).concat("\r\n")
-                                    .concat(record.timeSlot).concat("\r\n")
-                                    .concat(studentID).concat("\r\n"),
-                            TargetHost, TargetPort
-                    );
-
-                }
-                return result;
-            }
-        }
-
-        return "Failed! No such record found!";
-    }
-
-    public synchronized String removeRoomRecord(String date, String roomNumber, String timeSlot, String studentID) {
-        try {
-            if (!roomRecords.get(date).get(roomNumber).containsKey(timeSlot)) {
+            } catch (NullPointerException e) {
                 return "Failed! No such timeslot found!";
             }
-            if (roomRecords.get(date).get(roomNumber).get(timeSlot).equals(studentID)) {
-                roomRecords.get(date).get(roomNumber).put(timeSlot, null);
-                return "Success!";
-            } else {
-                // This slot is reserved by someone else
-                return "Failed! You do not have permission.";
-            }
-        } catch (NullPointerException e) {
-            return "Failed! No such timeslot found!";
         }
+
     }
 
-    public synchronized String removeBookingTable(String bookingID, String studentID) {
-
-        for (int i = 0; i < bookingTable.size(); i++) {
-            BookingRecord record = bookingTable.get(i);
-            if (record.bookingID.equals(bookingID)) {
-                if (!record.studentID.equals(studentID)) {
-                    return "Failed! You do not have permission to modify this booking!";
+    public String removeBookingTable(String bookingID, String studentID) {
+        synchronized (bookingTable) {
+            for (int i = 0; i < bookingTable.size(); i++) {
+                BookingRecord record = bookingTable.get(i);
+                if (record.bookingID.equals(bookingID)) {
+                    if (!record.studentID.equals(studentID)) {
+                        return "Failed! You do not have permission to modify this booking!";
+                    }
+                    bookingTable.remove(record);
+                    return "Success!";
                 }
-                bookingTable.remove(record);
-                return "Success!";
             }
+            return "Failed! Record Not Found!";
         }
-        return "Failed! Record Not Found!";
+
     }
 
     public BookingRecord findRecord(String bookingID) {
-        for (BookingRecord bookingRecord : bookingTable) {
-            if (bookingRecord.bookingID.equals(bookingID)) {
-                return bookingRecord;
+        synchronized (bookingTable) {
+            for (BookingRecord bookingRecord : bookingTable) {
+                if (bookingRecord.bookingID.equals(bookingID)) {
+                    return bookingRecord;
+                }
             }
+            return null;
         }
-        return null;
     }
 }
 

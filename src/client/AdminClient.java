@@ -50,7 +50,7 @@ public class AdminClient {
                         System.out.println("Please enter the timeslot(HH:mm-HH:mm):");
                         String timeslot = br.readLine();
                         String result = adminService.createRoom(room, date, timeslot, adminID);
-                        Log.addLog(adminID, "[Request] Create a room, " + ", " + room + ", " + date + ", " + timeslot + "\r\n");
+                        Log.addLog(adminID, "[Request] Create a room, " + room + ", " + date + ", " + timeslot + "\r\n");
                         Log.addLog(adminID, "[Response] " + result + "\r\n\r\n");
                         System.out.println(result);
                         break;
